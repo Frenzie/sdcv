@@ -32,6 +32,8 @@
 
 #include "libwrapper.hpp"
 
+#include "cJSON.h"
+
 static const char ESC_BLUE[] = "\033[0;34m";
 static const char ESC_END[] = "\033[0m";
 static const char ESC_BOLD[] = "\033[1m";
@@ -47,6 +49,7 @@ static const char *KREF_VISFMT = ESC_BOLD;
 static const char *ABR_VISFMT = ESC_GREEN;
 
 static std::string xdxf2text(const char *p, bool colorize_output)
+
 {
 	std::string res;
 	for (; *p; ++p) {
@@ -296,7 +299,7 @@ namespace {
     };
 }
 
-bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
+bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force, bool json)
 {
 	if (nullptr == loc_str)
 		return true;
@@ -402,10 +405,32 @@ bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
 			}
 		} else {
 			sdcv_pager pager(force);
-			fprintf(pager.get_stream(), _("Found %zu items, similar to %s.\n"),
-                    res_list.size(), utf8_output_ ? get_impl(str) : utf8_to_locale_ign_err(get_impl(str)).c_str());
-			for (const TSearchResult& search_res : res_list)
-				print_search_result(pager.get_stream(), search_res);
+			if (!json) {
+				fprintf(pager.get_stream(), _("Found %zu items, similar to %s.\n"),
+											res_list.size(), utf8_output_ ? get_impl(str) : utf8_to_locale_ign_err(get_impl(str)).c_str());
+				for (const TSearchResult& search_res : res_list)
+					print_search_result(pager.get_stream(), search_res);
+			} else {
+				char *out;
+				cJSON *root,*fld;
+				root = cJSON_CreateArray();
+				for (const TSearchResult& search_res : res_list) {
+					std::string loc_bookname, loc_def, loc_exp;
+					if(!utf8_output_){
+						loc_bookname=utf8_to_locale_ign_err(search_res.bookname);
+						loc_def=utf8_to_locale_ign_err(search_res.def);
+						loc_exp=utf8_to_locale_ign_err(search_res.exp);
+					}
+					cJSON_AddItemToArray(root, fld = cJSON_CreateObject());
+					cJSON_AddStringToObject(fld, "dict", utf8_output_ ? search_res.bookname.c_str() : loc_bookname.c_str());
+					cJSON_AddStringToObject(fld, "word", utf8_output_ ? search_res.def.c_str() : loc_def.c_str());
+					cJSON_AddStringToObject(fld, "definition", utf8_output_ ? search_res.exp.c_str() : loc_exp.c_str());
+				}
+				out = cJSON_Print(root);
+				cJSON_Delete(root);
+				fprintf(pager.get_stream(), "%s", out);
+				free(out);
+			}
 		}
 
 	} else {

@@ -49,6 +49,9 @@ set(sdcv_SRCS
   src/distance.cpp 
   src/distance.hpp
   src/mapfile.hpp
+
+  src/cJSON/cJSON.c
+  src/cJSON/cJSON.h
 )
 
 if (ENABLE_NLS)
@@ -83,6 +86,7 @@ include_directories(
 	${ZLIB_INCLUDE_DIR}
 	${GLIB2_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/src/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/src/cJSON
 	${CMAKE_CURRENT_BINARY_DIR}
 )
 

@@ -69,6 +69,7 @@ int main(int argc, char *argv[]) try {
 	gboolean show_list_dicts = FALSE;
 	glib::StrArr use_dict_list;
 	gboolean non_interactive = FALSE;
+	gboolean json_output = FALSE;
 	gboolean utf8_output = FALSE;
 	gboolean utf8_input = FALSE;
 	glib::CharStr opt_data_dir;
@@ -83,6 +84,8 @@ int main(int argc, char *argv[]) try {
 		 _("for search use only dictionary with this bookname"),
 		 _("bookname")},
 		{"non-interactive", 'n', 0, G_OPTION_ARG_NONE, &non_interactive, 
+		 _("for use in scripts"), nullptr},
+		{"json-output", 'j', 0, G_OPTION_ARG_NONE, &json_output, 
 		 _("for use in scripts"), nullptr},
 		{"utf8-output", '0', 0, G_OPTION_ARG_NONE, &utf8_output, 
 		 _("output must be in utf8"), nullptr},
@@ -180,7 +183,7 @@ int main(int argc, char *argv[]) try {
 	std::unique_ptr<IReadLine> io(create_readline_object());
 	if (optind < argc) {
 		for(int i = optind; i < argc; ++i)
-			if (!lib.process_phrase(argv[i], *io, non_interactive))
+			if (!lib.process_phrase(argv[i], *io, non_interactive, json_output))
 				return EXIT_FAILURE;
 	} else if (!non_interactive) {
 
