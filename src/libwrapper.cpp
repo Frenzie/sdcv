@@ -145,8 +145,10 @@ static std::string parse_data(const gchar *data, bool colorize_output)
 	p += sizeof(guint32);
 	while (guint32(p - data)<data_size) {
 		switch (*p++) {
-		case 'm':
-		case 'l': //need more work...
+		case 'm': // plain text
+		case 'l': // locale encoded data, need more work...
+		case 'h': // HTML data
+		case 'w': // WikiMedia markup data
 			sec_size = strlen(p);
 			if (sec_size) {
 				res+="\n";
@@ -156,7 +158,7 @@ static std::string parse_data(const gchar *data, bool colorize_output)
 			}
 			sec_size++;
 			break;
-		case 'g':
+		case 'g': // pango markup data
 		case 'x':
 			sec_size = strlen(p);
 			if (sec_size) {
@@ -179,11 +181,11 @@ static std::string parse_data(const gchar *data, bool colorize_output)
 			}
 			sec_size++;
 			break;
-        case 'k':
+		case 'k': // PowerWord's data
 		case 'y':
 			sec_size = strlen(p);
-            if (sec_size)
-                res += std::string(p, sec_size);
+			if (sec_size)
+				res += std::string(p, sec_size);
 			sec_size++;
 			break;
 		case 'W':
