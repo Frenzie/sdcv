@@ -1,3 +1,17 @@
+Version 0.5
+- add option to colorize output
+- Roman Imankulov's patch to better use of readline
+- Fix build with modern compilers
+- Fix work on CPU with align issues, like ARM and SPARC (thanks to Michal Čihař )
+- Migrate to C++11 and CMake (so at now archive with code 180K->54K)
+- Update Russian translation
+
+Version 0.4.3
+- fix build problems with gcc 4.x
+- French translation, thanks to Vincent Petry <PVince81@yahoo.fr>
+- Slovak translation update, thanks to Ivan Masár <helix84@centrum.sk>
+- Add Czech translation, thanks to Michal Čihař <michal@cihar.com>
+
 Version 0.4.2
 * Cache scheme has been rewritten, size of cache has been reduced
 * Merge with stardict, speedup of lookup, and add full-text search

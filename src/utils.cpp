@@ -1,4 +1,4 @@
-/* 
+/*
  * This file part of sdcv - console version of Stardict program
  * http://sdcv.sourceforge.net
  * Copyright (C) 2005-2006 Evgeniy <dushistov@mail.ru>
@@ -24,61 +24,69 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <cstdlib>
+#include <cstdio>
+#include <algorithm>
 
 #include "utils.hpp"
 
-bool stdio_getline(FILE *in, string & str)
+std::string utf8_to_locale_ign_err(const std::string& utf8_str)
 {
-  str.clear();
-  int ch;
-  while((ch=fgetc(in))!=EOF && ch!='\n')
-    str+=ch;
-  if(EOF==ch)
-    return false;
-  return true;
-}
+	std::string res;
 
-string utf8_to_locale_ign_err(const string& utf8_str)
-{
-	gsize bytes_read, bytes_written;
-	GError *err=NULL;
-	string res;
-  
-	const char * charset;
+	const char *charset;
 	if (g_get_charset(&charset))
-		res=utf8_str;
+		res = utf8_str;
 	else {
-		gchar *tmp=g_convert_with_fallback(utf8_str.c_str(), -1, charset, "UTF-8", NULL, 
-						   &bytes_read, &bytes_written, &err);
-		if (NULL==tmp){
+        gsize bytes_read, bytes_written;
+        glib::Error err;
+        glib::CharStr tmp(g_convert_with_fallback(utf8_str.c_str(), -1, charset, "UTF-8", nullptr,
+                                                  &bytes_read, &bytes_written, get_addr(err)));
+		if (nullptr == get_impl(tmp)){
 			fprintf(stderr, _("Can not convert %s to current locale.\n"), utf8_str.c_str());
 			fprintf(stderr, "%s\n", err->message);
-			g_error_free(err);
 			exit(EXIT_FAILURE);
 		}
-		res=tmp;
-		g_free(tmp);
+		res = get_impl(tmp);
 	}
 
 	return res;
 }
 
-char *locale_to_utf8(const char *loc_str)
+static void __for_each_file(const std::string& dirname, const std::string& suff,
+                            const std::list<std::string>& order_list, const std::list<std::string>& disable_list, 
+                            const std::function<void (const std::string&, bool)>& f)
 {
-	if(NULL==loc_str)
-		return NULL;
-	gsize bytes_read;
-	gsize bytes_written;
-	GError *err=NULL;
-	gchar *str=NULL;
-	str=g_locale_to_utf8(loc_str, -1, &bytes_read, &bytes_written, &err);
-	if(NULL==str){
-		fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
-		fprintf(stderr, "%s\n", err->message);
-		g_error_free(err);
-		exit(EXIT_FAILURE);
-	}
+	GDir *dir = g_dir_open(dirname.c_str(), 0, nullptr);	
+    if (dir) {
+		const gchar *filename;
 
-	return str;
+        while ((filename = g_dir_read_name(dir))!=nullptr) {	
+			const std::string fullfilename(dirname+G_DIR_SEPARATOR_S+filename);
+			if (g_file_test(fullfilename.c_str(), G_FILE_TEST_IS_DIR))
+				__for_each_file(fullfilename, suff, order_list, disable_list, f);
+            else if (g_str_has_suffix(filename, suff.c_str()) &&
+                     std::find(order_list.begin(), order_list.end(), 
+                               fullfilename)==order_list.end()) { 
+                const bool disable = std::find(disable_list.begin(), 
+                                         disable_list.end(), 
+                                         fullfilename)!=disable_list.end();
+                f(fullfilename, disable);
+			}
+		}
+		g_dir_close(dir);
+	}
 }
 
+
+void for_each_file(const std::list<std::string>& dirs_list, const std::string& suff,
+                   const std::list<std::string>& order_list, const std::list<std::string>& disable_list, 
+                   const std::function<void (const std::string&, bool)>& f)
+{
+	for (const std::string & item : order_list) {
+		const bool disable = std::find(disable_list.begin(), disable_list.end(), item) != disable_list.end();
+		f(item, disable);
+	}
+	for (const std::string& item : dirs_list)
+		__for_each_file(item, suff, order_list, disable_list, f);			
+}

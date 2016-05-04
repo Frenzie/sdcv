@@ -23,6 +23,7 @@
 #endif
 
 #include <cstdio>
+#include <cstdlib>
 #ifdef WITH_READLINE
 #  include <readline/readline.h>
 #  include <readline/history.h>
@@ -34,52 +35,67 @@
 #include "readline.hpp"
 
 #ifndef WITH_READLINE
- 
-class dummy_readline : public read_line {
-public:
-	bool read(const string& banner, string& line) {
-		printf(banner.c_str());
-		return stdio_getline(stdin, line);
-	}
-};
+namespace {
+    static bool stdio_getline(FILE *in, std::string & str)
+    {
+        str.clear();
+        int ch;
+        while ((ch=fgetc(in)) != EOF && ch != '\n')
+            str += ch;
 
+        return EOF != ch;
+    }
+
+    class dummy_readline : public IReadLine {
+    public:
+        bool read(const string& banner, string& line) override {
+            printf("%s", banner.c_str());
+            return stdio_getline(stdin, line);
+        }
+    };
+}
 #else
 
-class real_readline : public read_line {
-public:
-	real_readline()
-	{
-		using_history();
-		string histname=(string(g_get_home_dir())+G_DIR_SEPARATOR+".sdcv_history");
-		read_history(histname.c_str());;
-	}
-	~real_readline() 
-	{
-		string histname=(string(g_get_home_dir())+G_DIR_SEPARATOR+".sdcv_history");
-		write_history(histname.c_str());
-		const gchar *hist_size_str=g_getenv("SDCV_HISTSIZE");
-		int hist_size;
-		if (!hist_size_str || sscanf(hist_size_str, "%d", &hist_size)<1)
-			hist_size=2000;
-		history_truncate_file(histname.c_str(), hist_size);
-	}
-	bool read(const string &banner, string& line)
-	{
-    char *phrase=NULL;
-		phrase=readline(banner.c_str());
-		if (phrase) {
-			line=phrase;
-			free(phrase);
-			return true;
-		}
-		return false;
-	}
-	void add_to_history(const std::string& phrase) { add_history(phrase.c_str()); }
-};
+namespace {
+    class real_readline : public IReadLine {
 
+    public:
+        real_readline() {
+            rl_readline_name = "sdcv";
+            using_history();
+            const std::string histname = std::string(g_get_home_dir()) + G_DIR_SEPARATOR + ".sdcv_history";
+            read_history(histname.c_str());
+        }
+
+        ~real_readline() {
+            const std::string histname = std::string(g_get_home_dir()) + G_DIR_SEPARATOR + ".sdcv_history";
+            write_history(histname.c_str());
+            const gchar *hist_size_str=g_getenv("SDCV_HISTSIZE");
+            int hist_size;
+            if (!hist_size_str || sscanf(hist_size_str, "%d", &hist_size)<1)
+                hist_size = 2000;
+            history_truncate_file(histname.c_str(), hist_size);
+        }
+
+        bool read(const std::string &banner, std::string& line) override {
+            char *phrase = nullptr;
+            phrase = readline(banner.c_str());
+            if (phrase) {
+                line = phrase;
+                free(phrase);
+                return true;
+            }
+            return false;
+        }
+
+        void add_to_history(const std::string& phrase) override {
+            add_history(phrase.c_str()); 
+        }
+    };
+}
 #endif//WITH_READLINE
 
-read_line *create_readline_object()
+IReadLine *create_readline_object()
 {
 #ifdef WITH_READLINE
 	return new real_readline;
